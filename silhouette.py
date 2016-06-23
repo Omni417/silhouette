@@ -45,7 +45,7 @@ import time
 
 SIZE = (640,480)
 
-
+RUNNING = True
 
 def update_clock():
     clock_value.set(datetime.datetime.now().strftime('%A %b %d  %I:%M:%S %p'))
@@ -54,9 +54,11 @@ def update_clock():
 # a tkinter object with internal queues and processing
 class CameraPipeline(object):
 
-    def __init__(self,root,live1):
+    def __init__(self,root):
         #save frames that will be updated with images or data
         self.root = root
+        self.video_window = tk.Frame(master=self.root,height=480,width=640)
+        self.video_window.grid(column=0, row=1)
         #self.live1 = live1
         #self.live2 = live2
         #self.preview1 = preview1
@@ -76,7 +78,7 @@ class CameraPipeline(object):
 
         #set up interface
 
-        self.display = ttk.LabelFrame(master=live1, text='camera')
+        self.display = ttk.LabelFrame(master=self.video_window, text='camera')
         self.display.grid(column=0, row=0)
 
         self.image_display = tk.Label(master=self.display)
@@ -98,7 +100,7 @@ class CameraPipeline(object):
 
     def start_camera(self):
         clist = pygame.camera.list_cameras()
-        print clist
+        #print clist
         camnum = 1 #get the second camera
         self.camera = pygame.camera.Camera(clist[camnum], SIZE, 'RGB')
         self.camera.start()
@@ -111,6 +113,8 @@ class CameraPipeline(object):
 
     def cam_to_queue(self):
         while True:
+            if RUNNING is False:
+                break
             if self.camera_image_queue.empty():  # send at most 1 image to be processed
                 snapshot = self.camera.get_image()
                 #print 'got frame'
@@ -125,6 +129,8 @@ class CameraPipeline(object):
         DISPLAY_SIZE = SIZE
         output = {}
         while True:
+            if RUNNING is False:
+                break
             if self.image_processing_queue.empty():
                 #print "process_image_loop"
                 input = self.camera_image_queue.get(True)  # will block until image is ready
@@ -136,23 +142,6 @@ class CameraPipeline(object):
                 output['image_size'] = DISPLAY_SIZE
                 self.image_processing_queue.put(output)
 
-    def display_image(self):
-
-        # try to display image,
-        try:
-            #print 'trying to get frame'
-            data = self.image_processing_queue.get(True)
-            a = Image.frombytes(data['image_mode'], data['image_size'], data['image'])
-            self.live_image = ImageTk.PhotoImage(image=a)
-            #print "got an image, and attempting to display it"
-            #self.image_display.configure(image=z)
-            #self.image_display._image_cache = z
-            self.image_label = ttk.Label(photo=self.live_image,master=self.live1)
-            self.image_label.grid(row=0,column=0)
-        except:
-            pass
-
-        self.root.after(20, self.display_image)
 
     def display_image(self):
 
@@ -167,8 +156,8 @@ class CameraPipeline(object):
             self.image_display._image_cache = z
         except:
             pass
-
-        self.root.after(20, self.display_image)
+        if RUNNING is True:
+            self.root.after(20, self.display_image)
 
 
     def stop_camera(self):
@@ -176,7 +165,7 @@ class CameraPipeline(object):
             self.cam_process.terminate()
             time.sleep(0.1)
             if self.cam_process.is_alive():
-                print "killing camera process"
+                #print "killing camera process"
                 os.system('kill -9 {}'.format(self.cam_process.pid))  # process won't terminate normally
             self.camera.stop()
             #LineControl.cameras_taken.remove(self.camdev)
@@ -184,13 +173,17 @@ class CameraPipeline(object):
             pass
 
     def kill(self):
-        self.stop_camera()
         self.vision_process.terminate()
+        time.sleep(0.2)
         if self.vision_process.is_alive():
-            print "had to kill process"
+            #print "had to kill vision process"
             os.system('kill -9 {}'.format(self.vision_process.pid))  # process won't terminate normally
+        self.stop_camera()
 
 def exit_handler():
+    global RUNNING
+    RUNNING = False
+    time.sleep(.2)
     pygame.quit()
     print 'terminating'
     camera.kill()
@@ -207,8 +200,8 @@ if __name__ == '__main__':
     update_clock()
     ttk.Label(root, textvariable=clock_value ,borderwidth=1).grid(row=0,column=0)
 
-    video_window = tk.Frame(master=root,height=480,width=640)
-    video_window.grid(column=0, row=1)
 
-    camera = CameraPipeline(root,video_window)
-    root.mainloop(  )
+
+    camera = CameraPipeline(root)
+    root.protocol("WM_DELETE_WINDOW", exit_handler)
+    root.mainloop()
