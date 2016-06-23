@@ -82,19 +82,29 @@ class CameraPipeline(object):
 
 
         self.live_mirror = tk.Label(master=self.second)
-        self.live_mirror.grid(column=0, row=0)
-        #self.preview_mirror = tk.Label(master=self.display)
-        #self.preview_mirror.grid(column=1, row=0)
+        self.live_mirror.grid(column=1, row=0)
+        self.preview_mirror = tk.Label(master=self.second)
+        self.preview_mirror.grid(column=0, row=0)
         self.live = tk.Label(master=self.display)
-        self.live.grid(column=0, row=0)
-        #self.preview = tk.Label(master=self.display)
-        #self.preview.grid(column=0, row=0)
+        self.live.grid(column=1, row=0)
+        self.preview = tk.Label(master=self.display)
+        self.preview.grid(column=0, row=0)
 
         #setup thresholding variables
         self.tR=tk.IntVar()
         self.tG=tk.IntVar()
         self.tB=tk.IntVar()
         self.tW=tk.IntVar()
+        self.tR.trace_variable('w', self.send_image_processing_controls)
+        self.tG.trace_variable('w', self.send_image_processing_controls)
+        self.tB.trace_variable('w', self.send_image_processing_controls)
+        self.tW.trace_variable('w', self.send_image_processing_controls)
+        self.send_image_processing_controls()
+
+        self.filename=tk.StringVar()
+        self.nonce=tk.StringVar()
+        self.nonce.set("0")
+
         self.tcontrol = ttk.LabelFrame(master=self.display,text="Threshold")
         self.tcontrol.grid(row=1,column=0)
         tk.Label(master=self.tcontrol,text='Red').grid(row=0,column=0)
@@ -109,7 +119,9 @@ class CameraPipeline(object):
         tk.Label(master=self.tcontrol,text='Width').grid(row=3,column=0)
         tk.Label(master=self.tcontrol,textvariable=self.tW,width=3).grid(row=3,column=1)
         tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tW,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=3,column=2)
-
+        tk.Entry(master=self.tcontrol,textvariable = self.filename).grid(row=4,column=0)
+        tk.Entry(master=self.tcontrol,textvariable = self.nonce).grid(row=4,column=2)
+        tk.Button(master=self.tcontrol,text='save',command=self.saveimage).grid(row=4,column=3)
 
 
         #self.display = ttk.LabelFrame(master=live1, text='Live view')
@@ -125,6 +137,30 @@ class CameraPipeline(object):
         self.start_camera()  # cam_process started here
         self.root.after(20, self.display_image)
 
+    def send_image_processing_controls(self, name=None, index=None, mode=None):
+        controls = {}
+        controls['tr'] = int(self.tR.get())
+        controls['tg'] = int(self.tG.get())
+        controls['tb'] = int(self.tB.get())
+        controls['tw'] = int(self.tW.get())
+        self.image_processing_controls_queue.put(controls)
+
+    def saveimage(self):
+        snapshot = self.camera.get_image()
+        dest=snapshot.copy()
+        filename = self.filename.get()
+        number = int(self.nonce.get())
+        tr = int(self.tR.get())
+        tg = int(self.tG.get())
+        tb = int(self.tB.get())
+        tw = int(self.tW.get())
+
+        pygame.transform.threshold(dest,snapshot,(tr,tg,tb),(tw,tw,tw),(255,255,255),1)
+        pygame.image.save(dest,"{}_{}.png".format(filename,number))
+
+        self.nonce.set("{}".format(number+1))
+
+
     def start_camera(self):
         clist = pygame.camera.list_cameras()
         #print clist
@@ -139,13 +175,25 @@ class CameraPipeline(object):
         return
 
     def cam_to_queue(self):
+        self.snapshot = pygame.surface.Surface(SIZE)
+
         while True:
+            output = {}
             if RUNNING is False:
                 break
+
+
             if self.camera_image_queue.empty():  # send at most 1 image to be processed
-                snapshot = self.camera.get_image()
+                self.snapshot = self.camera.get_image()
+                #print "queue size is {}".format(self.camera_image_queue.qsize())
+                #self.sil = snapshot
                 #print 'got frame'
-                self.camera_image_queue.put(pygame.image.tostring(snapshot, 'RGB'))
+                #pygame.transform.threshold(self.sil,snapshot,(0,200,0),(30,60,30),(0,0,0),2)
+
+                output['snapshot']=pygame.image.tostring(self.snapshot, 'RGB')
+                #output['sil']=pygame.image.tostring(snapshot, 'RGB')
+                self.camera_image_queue.put(output)
+                time.sleep(.05)
 
     def set_exposure(self):
         #prevents exposure from changing
@@ -155,23 +203,45 @@ class CameraPipeline(object):
     def process_image(self):
         DISPLAY_SIZE = SIZE
         output = {}
+        controls = self.image_processing_controls_queue.get()
+        tr = controls['tr']
+        tg = controls['tg']
+        tb = controls['tb']
+        tw = controls['tw']
+        #print 'got controls'
         while True:
-            if RUNNING is False:
-                break
+            try:
+                controls = self.image_processing_controls_queue.get(False)
+                #print 'got controls'
+                tr = controls['tr']
+                tg = controls['tg']
+                tb = controls['tb']
+                tw = controls['tw']
+            except:
+                pass
             if self.image_processing_queue.empty():
                 #print "process_image_loop"
                 input = self.camera_image_queue.get(True)  # will block until image is ready
-                image = Image.frombytes('RGB', SIZE, input)
-                small2 = image.filter(ImageFilter.SMOOTH)
+                #print "queue size is {}".format(self.camera_image_queue.qsize())
+                #image = Image.frombytes('RGB', SIZE, input['snapshot'])
+                #small2 = image.filter(ImageFilter.SMOOTH)
 
-                output['image'] = image.tostring()
-                output['image_mode'] = 'RGB'
-                output['image_size'] = DISPLAY_SIZE
-                #global FREEZE
-                #if FREEZE is False:
-                    #do thresholding and generate new silhouette
-                    #add silhouette to output
-                #    pass
+                #output['image'] = image.tostring()
+                #output['image_mode'] = 'RGB'
+                #output['image_size'] = DISPLAY_SIZE
+
+                siltmp= pygame.image.frombuffer(input['snapshot'],SIZE,'RGB')
+                dest=siltmp.copy()
+
+                #pygame.transform.threshold(self.sil,tmp,(self.TR,self.TG,self.TB),(w,w,w),(0,0,0),2)
+                pygame.transform.threshold(dest,siltmp,(tr,tg,tb),(tw,tw,tw),(255,255,255),1)
+                #print "thresholding with {} threshold at ({},{},{})".format(tw,tr,tg,tb)
+                #pygame.transform.threshold(self.sil,tmp,(0,255,0),(50,50,50),(127,127,127))
+                #self.sil = pygame.transform.flip(tmp,0,1)
+                output['sil'] = pygame.image.tostring(dest, 'RGB')
+                #print len(output['sil'])
+                #print "done silhouetting"
+
                 self.image_processing_queue.put(output)
 
 
@@ -181,19 +251,41 @@ class CameraPipeline(object):
         # try to display image,
         try:
             #print 'trying to get frame'
-            data = self.image_processing_queue.get(False)
-            a = Image.frombytes(data['image_mode'], data['image_size'], data['image'])
-            b=a
-            b=a.transform(SIZE,Image.EXTENT,(640,0,0,480))
+            data = self.image_processing_queue.get(True)
+            #a = Image.frombytes('RGB', SIZE, data['sil'])
+            #b=a.transform(SIZE,Image.EXTENT,(640,0,0,480))
             #b = a.resize((320, 240))
-            z = ImageTk.PhotoImage(image=a)
-            mirror = ImageTk.PhotoImage(image=b)
+            #z = ImageTk.PhotoImage(image=a)
+            #mirror = ImageTk.PhotoImage(image=b)
 
-            self.live.configure(image=z)
-            self.live._image_cache = z
+            #self.live.configure(image=mirror)
+            #self.live._image_cache = mirror
 
-            self.live_mirror.configure(image=mirror)
-            self.live_mirror.image_cache = mirror
+            #self.live_mirror.configure(image=mirror)
+            #self.live_mirror.image_cache = mirror
+
+            #self.preview.configure(image=z)
+            #self.preview._image_cache = z
+            #self.preview_mirror.configure(image=mirror)
+            #self.preview_mirror.image_cache = mirror
+
+
+            #print "getting silhouette"
+            sila = Image.frombytes('RGB', SIZE, data['sil'])
+            #silz = ImageTk.PhotoImage(image=sila)
+            #print "1"
+            silb = sila.transform(SIZE,Image.EXTENT,(640,0,0,480))
+            #print "2"
+            #print "3"
+            silm = ImageTk.PhotoImage(image=silb)
+            #print "built the silouettes"
+
+            self.preview.configure(image=silm)
+            self.preview._image_cache = silm
+            self.preview_mirror.configure(image=silm)
+            self.preview_mirror.image_cache = silm
+
+
 
             #check to see if silhouette exists in data...
             #if it does, update silhouette frames
@@ -248,7 +340,6 @@ if __name__ == '__main__':
     #clock_value = tk.StringVar(value= 'clock')
     #update_clock()
     #ttk.Label(root, textvariable=clock_value ,borderwidth=1).grid(row=0,column=0)
-
 
 
     camera = CameraPipeline(root)
