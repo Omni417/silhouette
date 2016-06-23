@@ -56,9 +56,11 @@ class CameraPipeline(object):
 
     def __init__(self,root):
         #save frames that will be updated with images or data
+        self.second = tk.Toplevel()
+        self.second.wm_title("Mirror")
         self.root = root
-        self.video_window = tk.Frame(master=self.root)
-        self.video_window.grid(column=0, row=1)
+        self.display = tk.Frame(master=root)
+        self.display.grid(column=0, row=0)
         #self.live1 = live1
         #self.live2 = live2
         #self.preview1 = preview1
@@ -78,17 +80,36 @@ class CameraPipeline(object):
 
         #set up interface
 
-        self.display = ttk.LabelFrame(master=self.video_window, text='camera')
-        self.display.grid(column=0, row=0)
 
-        self.live_mirror = tk.Label(master=self.display)
+        self.live_mirror = tk.Label(master=self.second)
         self.live_mirror.grid(column=0, row=0)
         #self.preview_mirror = tk.Label(master=self.display)
         #self.preview_mirror.grid(column=1, row=0)
         self.live = tk.Label(master=self.display)
-        self.live.grid(column=2, row=0)
+        self.live.grid(column=0, row=0)
         #self.preview = tk.Label(master=self.display)
         #self.preview.grid(column=0, row=0)
+
+        #setup thresholding variables
+        self.tR=tk.IntVar()
+        self.tG=tk.IntVar()
+        self.tB=tk.IntVar()
+        self.tW=tk.IntVar()
+        self.tcontrol = ttk.LabelFrame(master=self.display,text="Threshold")
+        self.tcontrol.grid(row=1,column=0)
+        tk.Label(master=self.tcontrol,text='Red').grid(row=0,column=0)
+        tk.Label(master=self.tcontrol,textvariable=self.tR,width=3).grid(row=0,column=1)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tR,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=0,column=2)
+        tk.Label(master=self.tcontrol,text='Green').grid(row=1,column=0)
+        tk.Label(master=self.tcontrol,textvariable=self.tG,width=3).grid(row=1,column=1)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tG,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=1,column=2)
+        tk.Label(master=self.tcontrol,text='Blue').grid(row=2,column=0)
+        tk.Label(master=self.tcontrol,textvariable=self.tB,width=3).grid(row=2,column=1)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tB,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=2,column=2)
+        tk.Label(master=self.tcontrol,text='Width').grid(row=3,column=0)
+        tk.Label(master=self.tcontrol,textvariable=self.tW,width=3).grid(row=3,column=1)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tW,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=3,column=2)
+
 
 
         #self.display = ttk.LabelFrame(master=live1, text='Live view')
@@ -146,7 +167,13 @@ class CameraPipeline(object):
                 output['image'] = image.tostring()
                 output['image_mode'] = 'RGB'
                 output['image_size'] = DISPLAY_SIZE
+                #global FREEZE
+                #if FREEZE is False:
+                    #do thresholding and generate new silhouette
+                    #add silhouette to output
+                #    pass
                 self.image_processing_queue.put(output)
+
 
 
     def display_image(self):
@@ -167,6 +194,10 @@ class CameraPipeline(object):
 
             self.live_mirror.configure(image=mirror)
             self.live_mirror.image_cache = mirror
+
+            #check to see if silhouette exists in data...
+            #if it does, update silhouette frames
+
 
 
 
@@ -214,9 +245,9 @@ if __name__ == '__main__':
     pygame.init()
     pygame.camera.init()
 
-    clock_value = tk.StringVar(value= 'clock')
-    update_clock()
-    ttk.Label(root, textvariable=clock_value ,borderwidth=1).grid(row=0,column=0)
+    #clock_value = tk.StringVar(value= 'clock')
+    #update_clock()
+    #ttk.Label(root, textvariable=clock_value ,borderwidth=1).grid(row=0,column=0)
 
 
 
