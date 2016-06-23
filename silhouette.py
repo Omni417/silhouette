@@ -57,7 +57,7 @@ class CameraPipeline(object):
     def __init__(self,root):
         #save frames that will be updated with images or data
         self.root = root
-        self.video_window = tk.Frame(master=self.root,height=480,width=640)
+        self.video_window = tk.Frame(master=self.root)
         self.video_window.grid(column=0, row=1)
         #self.live1 = live1
         #self.live2 = live2
@@ -81,8 +81,14 @@ class CameraPipeline(object):
         self.display = ttk.LabelFrame(master=self.video_window, text='camera')
         self.display.grid(column=0, row=0)
 
-        self.image_display = tk.Label(master=self.display)
-        self.image_display.grid(column=0, row=0)
+        self.live_mirror = tk.Label(master=self.display)
+        self.live_mirror.grid(column=0, row=0)
+        #self.preview_mirror = tk.Label(master=self.display)
+        #self.preview_mirror.grid(column=1, row=0)
+        self.live = tk.Label(master=self.display)
+        self.live.grid(column=2, row=0)
+        #self.preview = tk.Label(master=self.display)
+        #self.preview.grid(column=0, row=0)
 
 
         #self.display = ttk.LabelFrame(master=live1, text='Live view')
@@ -150,10 +156,22 @@ class CameraPipeline(object):
             #print 'trying to get frame'
             data = self.image_processing_queue.get(False)
             a = Image.frombytes(data['image_mode'], data['image_size'], data['image'])
+            b=a
+            b=a.transform(SIZE,Image.EXTENT,(640,0,0,480))
             #b = a.resize((320, 240))
             z = ImageTk.PhotoImage(image=a)
-            self.image_display.configure(image=z)
-            self.image_display._image_cache = z
+            mirror = ImageTk.PhotoImage(image=b)
+
+            self.live.configure(image=z)
+            self.live._image_cache = z
+
+            self.live_mirror.configure(image=mirror)
+            self.live_mirror.image_cache = mirror
+
+
+
+
+
         except:
             pass
         if RUNNING is True:
