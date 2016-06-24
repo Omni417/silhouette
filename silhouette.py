@@ -157,6 +157,8 @@ class CameraPipeline(object):
 
         pygame.transform.threshold(dest,snapshot,(tr,tg,tb),(tw,tw,tw),(255,255,255),1)
         pygame.image.save(dest,"{}_{}.png".format(filename,number))
+        pygame.image.save(snapshot,"{}_{}_raw.png".format(filename,number))
+        pygame.image.save(dest,"/var/www/html/current.png")
 
         self.nonce.set("{}".format(number+1))
 
@@ -164,7 +166,7 @@ class CameraPipeline(object):
     def start_camera(self):
         clist = pygame.camera.list_cameras()
         #print clist
-        camnum = 1 #get the second camera
+        camnum = 0 #get the second camera
         self.camera = pygame.camera.Camera(clist[camnum], SIZE, 'RGB')
         self.camera.start()
         self.camera.get_image()
@@ -278,12 +280,14 @@ class CameraPipeline(object):
             #print "2"
             #print "3"
             silm = ImageTk.PhotoImage(image=silb)
+            sill = silb.resize((SIZE[0]*2,SIZE[1]*2))
+            silll = ImageTk.PhotoImage(image=sill)
             #print "built the silouettes"
 
             self.preview.configure(image=silm)
             self.preview._image_cache = silm
-            self.preview_mirror.configure(image=silm)
-            self.preview_mirror.image_cache = silm
+            self.preview_mirror.configure(image=silll)
+            self.preview_mirror.image_cache = silll
 
 
 
