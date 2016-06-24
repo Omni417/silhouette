@@ -43,8 +43,10 @@ import os
 from PIL import Image, ImageTk, ImageFilter, ImageDraw, ImageChops, ImageFont
 import time
 
-SIZE = (640,480)
+#SIZE = (640,480)
+SIZE = (800,600)
 
+FORMAT='HSV'
 RUNNING = True
 
 def update_clock():
@@ -91,37 +93,47 @@ class CameraPipeline(object):
         self.preview.grid(column=0, row=0)
 
         #setup thresholding variables
-        self.tR=tk.IntVar()
-        self.tG=tk.IntVar()
-        self.tB=tk.IntVar()
-        self.tW=tk.IntVar()
-        self.tR.trace_variable('w', self.send_image_processing_controls)
-        self.tG.trace_variable('w', self.send_image_processing_controls)
-        self.tB.trace_variable('w', self.send_image_processing_controls)
-        self.tW.trace_variable('w', self.send_image_processing_controls)
+        self.tH=tk.IntVar()
+        self.tS=tk.IntVar()
+        self.tV=tk.IntVar()
+        self.tH.trace_variable('w', self.send_image_processing_controls)
+        self.tS.trace_variable('w', self.send_image_processing_controls)
+        self.tV.trace_variable('w', self.send_image_processing_controls)
+        self.tHw=tk.IntVar()
+        self.tSw=tk.IntVar()
+        self.tVw=tk.IntVar()
+        self.tHw.trace_variable('w', self.send_image_processing_controls)
+        self.tSw.trace_variable('w', self.send_image_processing_controls)
+        self.tVw.trace_variable('w', self.send_image_processing_controls)
         self.send_image_processing_controls()
 
         self.filename=tk.StringVar()
         self.nonce=tk.StringVar()
         self.nonce.set("0")
 
-        self.tcontrol = ttk.LabelFrame(master=self.display,text="Threshold")
+        self.tcontrol = ttk.LabelFrame(master=self.display,text="Target")
         self.tcontrol.grid(row=1,column=0)
-        tk.Label(master=self.tcontrol,text='Red').grid(row=0,column=0)
-        tk.Label(master=self.tcontrol,textvariable=self.tR,width=3).grid(row=0,column=1)
-        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tR,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=0,column=2)
-        tk.Label(master=self.tcontrol,text='Green').grid(row=1,column=0)
-        tk.Label(master=self.tcontrol,textvariable=self.tG,width=3).grid(row=1,column=1)
-        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tG,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=1,column=2)
-        tk.Label(master=self.tcontrol,text='Blue').grid(row=2,column=0)
-        tk.Label(master=self.tcontrol,textvariable=self.tB,width=3).grid(row=2,column=1)
-        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tB,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=2,column=2)
-        tk.Label(master=self.tcontrol,text='Width').grid(row=3,column=0)
-        tk.Label(master=self.tcontrol,textvariable=self.tW,width=3).grid(row=3,column=1)
-        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tW,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=3,column=2)
-        tk.Entry(master=self.tcontrol,textvariable = self.filename).grid(row=4,column=0)
-        tk.Entry(master=self.tcontrol,textvariable = self.nonce).grid(row=4,column=2)
-        tk.Button(master=self.tcontrol,text='save',command=self.saveimage).grid(row=4,column=3)
+        tk.Label(master=self.tcontrol,text='Hue').grid(row=0,column=0)
+        tk.Label(master=self.tcontrol,textvariable=self.tH,width=3).grid(row=0,column=1)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tH,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=0,column=2)
+        tk.Label(master=self.tcontrol,text='Hue Thresh').grid(row=0,column=3)
+        tk.Label(master=self.tcontrol,textvariable=self.tHw,width=3).grid(row=0,column=4)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tHw,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=0,column=5)
+        tk.Label(master=self.tcontrol,text='Saturation').grid(row=1,column=0)
+        tk.Label(master=self.tcontrol,textvariable=self.tS,width=3).grid(row=1,column=1)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tS,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=1,column=2)
+        tk.Label(master=self.tcontrol,text='Saturation Thresh').grid(row=1,column=3)
+        tk.Label(master=self.tcontrol,textvariable=self.tSw,width=3).grid(row=1,column=4)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tSw,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=1,column=5)
+        tk.Label(master=self.tcontrol,text='Value').grid(row=2,column=0)
+        tk.Label(master=self.tcontrol,textvariable=self.tV,width=3).grid(row=2,column=1)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tV,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=2,column=2)
+        tk.Label(master=self.tcontrol,text='Value Thresh').grid(row=2,column=3)
+        tk.Label(master=self.tcontrol,textvariable=self.tVw,width=3).grid(row=2,column=4)
+        tk.Scale(master=self.tcontrol,orient=tk.HORIZONTAL, from_=0,to=255,variable=self.tVw,length=255,resolution=1.0,showvalue=0,takefocus=1).grid(row=2,column=5)
+        tk.Entry(master=self.tcontrol,textvariable = self.filename).grid(row=3,column=0)
+        tk.Entry(master=self.tcontrol,textvariable = self.nonce).grid(row=3,column=2)
+        tk.Button(master=self.tcontrol,text='save',command=self.saveimage).grid(row=3,column=3)
 
 
         #self.display = ttk.LabelFrame(master=live1, text='Live view')
@@ -139,10 +151,13 @@ class CameraPipeline(object):
 
     def send_image_processing_controls(self, name=None, index=None, mode=None):
         controls = {}
-        controls['tr'] = int(self.tR.get())
-        controls['tg'] = int(self.tG.get())
-        controls['tb'] = int(self.tB.get())
-        controls['tw'] = int(self.tW.get())
+        controls['th'] = int(self.tH.get())
+        controls['ts'] = int(self.tS.get())
+        controls['tv'] = int(self.tV.get())
+        controls['thw'] = int(self.tHw.get())
+        controls['tsw'] = int(self.tSw.get())
+        controls['tvw'] = int(self.tVw.get())
+
         self.image_processing_controls_queue.put(controls)
 
     def saveimage(self):
@@ -150,12 +165,14 @@ class CameraPipeline(object):
         dest=snapshot.copy()
         filename = self.filename.get()
         number = int(self.nonce.get())
-        tr = int(self.tR.get())
-        tg = int(self.tG.get())
-        tb = int(self.tB.get())
-        tw = int(self.tW.get())
+        th = int(self.tH.get())
+        ts = int(self.tS.get())
+        tv = int(self.tV.get())
+        thw = int(self.tHw.get())
+        tsw = int(self.tSw.get())
+        tvw = int(self.tVw.get())
 
-        pygame.transform.threshold(dest,snapshot,(tr,tg,tb),(tw,tw,tw),(255,255,255),1)
+        pygame.transform.threshold(dest,snapshot,(th,ts,tv),(thw,tsw,tvw),(255,255,255),1)
         pygame.image.save(dest,"{}_{}.png".format(filename,number))
         pygame.image.save(snapshot,"{}_{}_raw.png".format(filename,number))
         pygame.image.save(dest,"/var/www/html/current.png")
@@ -167,7 +184,7 @@ class CameraPipeline(object):
         clist = pygame.camera.list_cameras()
         #print clist
         camnum = 0 #get the second camera
-        self.camera = pygame.camera.Camera(clist[camnum], SIZE, 'RGB')
+        self.camera = pygame.camera.Camera(clist[camnum], SIZE, 'HSV')
         self.camera.start()
         self.camera.get_image()
         self.root.after(200, self.set_exposure)
@@ -206,19 +223,23 @@ class CameraPipeline(object):
         DISPLAY_SIZE = SIZE
         output = {}
         controls = self.image_processing_controls_queue.get()
-        tr = controls['tr']
-        tg = controls['tg']
-        tb = controls['tb']
-        tw = controls['tw']
+        th = controls['th']
+        ts = controls['ts']
+        tv = controls['tv']
+        thw = controls['thw']
+        tsw = controls['tsw']
+        tvw = controls['tvw']
         #print 'got controls'
         while True:
             try:
                 controls = self.image_processing_controls_queue.get(False)
+                th = controls['th']
+                ts = controls['ts']
+                tv = controls['tv']
+                thw = controls['thw']
+                tsw = controls['tsw']
+                tvw = controls['tvw']
                 #print 'got controls'
-                tr = controls['tr']
-                tg = controls['tg']
-                tb = controls['tb']
-                tw = controls['tw']
             except:
                 pass
             if self.image_processing_queue.empty():
@@ -234,10 +255,11 @@ class CameraPipeline(object):
 
                 siltmp= pygame.image.frombuffer(input['snapshot'],SIZE,'RGB')
                 dest=siltmp.copy()
+                #output['snapshot']=pygame.image.tostring(siltmp,'RGB')
 
                 #pygame.transform.threshold(self.sil,tmp,(self.TR,self.TG,self.TB),(w,w,w),(0,0,0),2)
-                pygame.transform.threshold(dest,siltmp,(tr,tg,tb),(tw,tw,tw),(255,255,255),1)
-                #print "thresholding with {} threshold at ({},{},{})".format(tw,tr,tg,tb)
+                pygame.transform.threshold(dest,siltmp,(th,ts,tv),(thw,tsw,tvw),(255,255,255),1)
+                #print "thresholding {},{},{} with ({},{},{})".format(th,ts,tv,thw,tsw,tvw)
                 #pygame.transform.threshold(self.sil,tmp,(0,255,0),(50,50,50),(127,127,127))
                 #self.sil = pygame.transform.flip(tmp,0,1)
                 output['sil'] = pygame.image.tostring(dest, 'RGB')
@@ -254,8 +276,8 @@ class CameraPipeline(object):
         try:
             #print 'trying to get frame'
             data = self.image_processing_queue.get(True)
-            #a = Image.frombytes('RGB', SIZE, data['sil'])
-            #b=a.transform(SIZE,Image.EXTENT,(640,0,0,480))
+            #a = Image.frombytes('RGB', SIZE, data['snapshot'])
+            #b=a.transform(SIZE,Image.EXTENT,(SIZE[0],0,0,SIZE[1]))
             #b = a.resize((320, 240))
             #z = ImageTk.PhotoImage(image=a)
             #mirror = ImageTk.PhotoImage(image=b)
@@ -276,18 +298,18 @@ class CameraPipeline(object):
             sila = Image.frombytes('RGB', SIZE, data['sil'])
             #silz = ImageTk.PhotoImage(image=sila)
             #print "1"
-            silb = sila.transform(SIZE,Image.EXTENT,(640,0,0,480))
+            silb = sila.transform(SIZE,Image.EXTENT,(SIZE[0],0,0,SIZE[1]))
             #print "2"
             #print "3"
             silm = ImageTk.PhotoImage(image=silb)
-            sill = silb.resize((SIZE[0]*2,SIZE[1]*2))
-            silll = ImageTk.PhotoImage(image=sill)
+            #sill = silb.resize((SIZE[0]*2,SIZE[1]*2))
+            #silll = ImageTk.PhotoImage(image=sill)
             #print "built the silouettes"
 
             self.preview.configure(image=silm)
             self.preview._image_cache = silm
-            self.preview_mirror.configure(image=silll)
-            self.preview_mirror.image_cache = silll
+            self.preview_mirror.configure(image=silm)
+            self.preview_mirror.image_cache = silm
 
 
 
